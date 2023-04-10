@@ -9,7 +9,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "lib": [
+      "ES2021.String"
+    ]
   },
   "exclude": ["src/**/*.spec.ts"]
 }

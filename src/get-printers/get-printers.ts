@@ -1,4 +1,5 @@
 import execFileAsync from "../utils/exec-file-async";
+import execAsync from "../utils/exec-async";
 import isValidPrinter from "../utils/windows-printer-valid";
 import throwIfUnsupportedOperatingSystem from "../utils/throw-if-unsupported-os";
 import { Printer } from "..";
@@ -12,7 +13,8 @@ async function getPrinters(): Promise<Printer[]> {
     if (release.startsWith('6.1')) {
       let splittedPrinters: string[] = stdout.split("\n")
       splittedPrinters.forEach((printerName: string) => {
-        if (printerName != "Name") {
+        printerName = printerName.replaceAll("\r", "").trim()
+        if (printerName != "Name" && printerName != "") {
           const printerData: Printer = {
             deviceId: printerName,
             name: printerName,
@@ -22,7 +24,7 @@ async function getPrinters(): Promise<Printer[]> {
         }
       })
     }
-    else if (release.startsWith('10')) {
+    else {
       stdout
         .split(/(\r?\n){2,}/)
         .map((printer) => printer.trim())
@@ -38,29 +40,20 @@ async function getPrinters(): Promise<Printer[]> {
     return printers;
   }
 
-  async function getPrintersViaCommandLine(command: string) {
-    const { stdout } = await execFileAsync("Powershell.exe", [
-      "-Command",
-      command,
-    ]);
-    return stdout
-  }
-
   try {
-    let finalizedStdout;
     throwIfUnsupportedOperatingSystem();
     // not tested with windows 8 & 8.1 
     if (release.startsWith('6.1')) {
-      finalizedStdout = await getPrintersViaCommandLine(`wmic printer get name`)
-    }
-    else if (release.startsWith('10')) {
-      finalizedStdout = await getPrintersViaCommandLine(`Get-CimInstance Win32_Printer -Property DeviceID,Name,PrinterPaperNames`)
+      const { stdout } = await execAsync('wmic printer get name');
+			return stdoutHandler(stdout);
     }
     else {
-      finalizedStdout = "This windows version unknown."
+      const { stdout } = await execFileAsync("Powershell.exe", [
+        "-Command",
+        "Get-CimInstance Win32_Printer -Property DeviceID,Name,PrinterPaperNames",
+      ]);
+      return stdoutHandler(stdout);
     }
-    
-    return stdoutHandler(finalizedStdout);
   } catch (error) {
     throw error;
   }
